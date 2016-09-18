@@ -91,11 +91,11 @@ done
 
 # echo the nagios data
 if [ "$check_status" -eq "0" ]; then
-  echo "OK | $perf_data"
+  echo "OK ($url) | $perf_data"
   exit 0
 fi
 
-echo "$check_message | $perf_data"
+echo "ATTENTION ($url) - $check_message | $perf_data"
 exit $check_status
 
 

@@ -25,11 +25,13 @@ function usage {
 
 # check function extracts the data from selenium grid's console, exit in case of incorrect data  and prepare the right echo data for nagios
 # $1 - browser type to check ("chrome", "firefox", "ie", etc..)
+# $2 - console data 
 function check {
 
   browser_type=$1
-  all_sessions=`curl -s $url | grep -o $browser_type.png | wc -l`
-  busy_sessions=`curl -s $url | grep $browser_type.png | grep -o class=\'busy\' | wc -l`
+  local console_date=$2
+  all_sessions=`echo $console_data | grep -o $browser_type.png | wc -l`
+  busy_sessions=`echo $console_data | grep $browser_type.png | grep -o class=\'busy\' | wc -l`
 
   if (( $all_sessions <=  "0" )); then
     echo "ERROR: $browser_type all sessions list (busy+available) is $all_sessions - could be connectivity issues or availability problem or non supported browser type in selenium"
@@ -75,10 +77,16 @@ if [[ -z $url ]]; then
   usage
 fi
 
+console_data=$(curl -s $url)
+if [ -z "$console_data" ]; then
+  echo "ERROR: problems curling grid's console: $url"
+  curl $url
+  exit 2 
+fi
 
 # Iterate the browser types to check
 for i in ${browsers_to_check[@]}; do
-  check $i
+  check $i $console_data
 done
 
 # echo the nagios data

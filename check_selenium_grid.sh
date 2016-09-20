@@ -25,36 +25,35 @@ function usage {
 
 # check function extracts the data from selenium grid's console, exit in case of incorrect data  and prepare the right echo data for nagios
 # $1 - browser type to check ("chrome", "firefox", "ie", etc..)
-# $2 - console data 
 function check {
 
-  browser_type=$1
-  local console_date=$2
-  all_sessions=`echo $console_data | grep -o $browser_type.png | wc -l`
-  busy_sessions=`echo $console_data | grep $browser_type.png | grep -o class=\'busy\' | wc -l`
+  local browser_type=$1
+  local all_sessions=`echo "$console_data" | grep -o $browser_type.png | wc -l`
+  local busy_sessions=`echo "$console_data" | grep $browser_type.png | grep -o class=\'busy\' | wc -l`
 
   if (( $all_sessions <=  "0" )); then
     echo "ERROR: $browser_type all sessions list (busy+available) is $all_sessions - could be connectivity issues or availability problem or non supported browser type in selenium"
     exit 2
   fi
 
-  busy_div_all=$((100*busy_sessions/$all_sessions + 1))
+  local busy_div_all=$((100*$busy_sessions/$all_sessions + 1))
 
-  # append message 
+  # append message
   if (($busy_div_all > $critical)); then
      check_message="$check_message ### CRITICAL: browser $browser_type, reached critical limit: $critical%, busy sessions: $busy_sessions, all sessions: $all_sessions"
   elif (($busy_div_all > $warning)); then
      check_message="$check_message ### WARNING: browser $browser_type, reached warning limit: $warning%, busy sessions: $busy_sessions, all sessions: $all_sessions"
   fi
-  
+
   #set check status
   if (($busy_div_all > $critical)); then
-    check_status=2  
+    check_status=2
   elif (($busy_div_all > $warning)) && (($check_status < "2")); then
     check_status=1
   fi
 
   perf_data="$perf_data all_$browser_type=$all_sessions busy_$browser_type=$busy_sessions "
+  #echo $perf_data
 }
 
 
@@ -81,21 +80,25 @@ console_data=$(curl -s $url)
 if [ -z "$console_data" ]; then
   echo "ERROR: problems curling grid's console: $url"
   curl $url
-  exit 2 
+  exit 2
 fi
 
 # Iterate the browser types to check
 for i in ${browsers_to_check[@]}; do
-  check $i $console_data
+  check $i
 done
 
 # echo the nagios data
 if [ "$check_status" -eq "0" ]; then
-  echo "OK ($url) | $perf_data"
+  echo "OK - (selenium grid: $url) | $perf_data"
   exit 0
 fi
 
-echo "ATTENTION ($url) - $check_message | $perf_data"
-exit $check_status
+if [ "$check_status" -eq "1" ]; then
+  echo "WARNING ($url) - $check_message - (selenium grid: $url) | $perf_data"
+  exit $check_status
+fi
 
+echo "CRITICAL - $check_message - (selenium grid: $url) | $perf_data"
+exit $check_status
 

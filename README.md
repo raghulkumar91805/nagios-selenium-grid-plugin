@@ -45,3 +45,10 @@ Restart nagios
 You should see the new service under the localhost machine
 
 watch the visulalized data in nagiosgraph
+
+## It's a bash script, so you can use it even without nagios
+
+Try something like this:
+```
+ while sleep 5; do date; ./check_selenium_grid.sh -u my_url; done
+ ```

@@ -21,7 +21,7 @@ function usage {
     echo "    -c  error in case of '100 * busy sessions / all sessions + 1' of one of the browser types is greater than the entered value (precentage). default is: $critical_default"
     echo "    -t  browser types to check. We 'wc -l' the <browser_type>.png in the console to find all sessions and after that 'wc -l' class=busy for the busy ones. default is: $browsers_to_check_default"
     echo "    -e  jenkins url"
-    echo "    -j  jenkins running jobs to monitor, we can use it to correlate high consumption in selenium grid with high activity in jenkins. for instance: jobA,jobB,jobC"
+    echo "    -j  jenkins running jobs to monitor, we can use it to correlate high consumption in selenium grid with high activity in jenkins. the data presented is magnified by factor of 10 to have better visal correlation ability against selenium data. example for jobs list: jobA,jobB,jobC"
     echo "    -h  display help"
     exit 2
 }
@@ -101,7 +101,7 @@ if [ ! -z "$jenkins_url" ]; then
 
   for i in ${jenkins_jobs[@]}; do
     # we add the "<name>" to the grep to count the job only once and not twice as it is exist in the url param as well
-    count=$(echo "$all_active_jobs" | grep -o "<name>$i" | wc -l)
+    count=$((10*$(echo "$all_active_jobs" | grep -o "<name>$i" | wc -l)))
     perf_data="$perf_data $i=$count"
   done
 
@@ -110,15 +110,15 @@ fi
 
 # echo the nagios data
 if [ "$check_status" -eq "0" ]; then
-  echo "OK - (selenium grid: $selenium_url) | $perf_data"
+  echo "OK - (selenium grid: $selenium_url, jenkins: $jenkins_url) | $perf_data"
   exit 0
 fi
 
 if [ "$check_status" -eq "1" ]; then
-  echo "WARNING - $check_message - (selenium grid: $selenium_url) | $perf_data"
+  echo "WARNING - $check_message - (selenium grid: $selenium_url, jenkins: $jenkins_url) | $perf_data"
   exit $check_status
 fi
 
-echo "CRITICAL - $check_message - (selenium grid: $selenium_url) | $perf_data"
+echo "CRITICAL - $check_message - (selenium grid: $selenium_url, jenkins: $jenkins_url) | $perf_data"
 exit $check_status
 

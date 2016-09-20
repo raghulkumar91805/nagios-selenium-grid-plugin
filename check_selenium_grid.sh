@@ -7,6 +7,7 @@ critical_default=95
 critical=$critical_default
 browsers_to_check_default="chrome,firefox,internet_explorer"
 IFS=',' read -r -a browsers_to_check <<< "$browsers_to_check_default"
+jenkins_jobs=""
 check_status=0 # 0 - ok, 1 - warn, 2 - critical
 check_message=""
 perf_data=""
@@ -14,11 +15,13 @@ perf_data=""
 # usage function
 function usage {
     echo " "
-    echo "  usage: $0 -u http://seleniumserver:port/grid/console [-w warning_percentage] [-c critical_precentage] [-t browser_types_to_check]"
+    echo "  usage: $0 -u http://seleniumserver:port/grid/console [-w warning_percentage] [-c critical_precentage] [-t browser_types_to_check] [-e http://jenkinsserver:port/jenkins] [-j jobs_to_monitor]"
     echo "    -u  selenium grid console url"
     echo "    -w  warn in case of '100 * busy sessions / all sessions + 1' of one of the browser types is greater than the entered value (precentage). default is: $warn_default"
     echo "    -c  error in case of '100 * busy sessions / all sessions + 1' of one of the browser types is greater than the entered value (precentage). default is: $critical_default"
     echo "    -t  browser types to check. We 'wc -l' the <browser_type>.png in the console to find all sessions and after that 'wc -l' class=busy for the busy ones. default is: $browsers_to_check_default"
+    echo "    -e  jenkins url"
+    echo "    -j  jenkins running jobs to monitor, we can use it to correlate high consumption in selenium grid with high activity in jenkins. for instance: jobA,jobB,jobC"
     echo "    -h  display help"
     exit 2
 }
@@ -52,7 +55,7 @@ function check {
     check_status=1
   fi
 
-  perf_data="$perf_data all_$browser_type=$all_sessions busy_$browser_type=$busy_sessions "
+  perf_data="$perf_data all_$browser_type=$all_sessions busy_$browser_type=$busy_sessions"
   #echo $perf_data
 }
 
@@ -61,44 +64,61 @@ function check {
 while [ $# -gt 0 ]
 do
   case "$1" in
-    -u) url="$2"; shift;;
+    -u) selenium_url="$2"; shift;;
     -w) warning="$2"; shift;;
     -c) critical="$2"; shift;;
     -t) IFS=',' read -r -a browsers_to_check <<< "$2"; shift;;
+    -e) jenkins_url="$2"; shift;;
+    -j) IFS=',' read -r -a jenkins_jobs <<< "$2"; shift;;
     -h) usage;;
      *) echo "unknown cli option: $1"; usage;;
   esac
   shift
 done
 
-if [[ -z $url ]]; then
+# Validate cli input
+if [[ -z $selenium_url ]]; then
   echo "url parameter is empty"
   usage
 fi
 
-console_data=$(curl -s $url)
+# fetch selenium grid data
+console_data=$(curl -s $selenium_url)
 if [ -z "$console_data" ]; then
-  echo "ERROR: problems curling grid's console: $url"
-  curl $url
+  echo "ERROR: problems curling grid's console: $selenium_url"
+  curl $selenium_url
   exit 2
 fi
 
-# Iterate the browser types to check
+# Iterate the browser types to check usage
 for i in ${browsers_to_check[@]}; do
   check $i
 done
 
+# fetch jenkins data
+if [ ! -z "$jenkins_url" ]; then
+  all_active_jobs=$(curl -s -g "$jenkins_url/api/xml?tree=jobs[name,url,color]&xpath=/hudson/job[ends-with(color/text(),\"_anime\")]&wrapper=jobs")
+
+  for i in ${jenkins_jobs[@]}; do
+    # we add the "<name>" to the grep to count the job only once and not twice as it is exist in the url param as well
+    count=$(echo "$all_active_jobs" | grep -o "<name>$i" | wc -l)
+    perf_data="$perf_data $i=$count"
+  done
+
+fi
+
+
 # echo the nagios data
 if [ "$check_status" -eq "0" ]; then
-  echo "OK - (selenium grid: $url) | $perf_data"
+  echo "OK - (selenium grid: $selenium_url) | $perf_data"
   exit 0
 fi
 
 if [ "$check_status" -eq "1" ]; then
-  echo "WARNING ($url) - $check_message - (selenium grid: $url) | $perf_data"
+  echo "WARNING - $check_message - (selenium grid: $selenium_url) | $perf_data"
   exit $check_status
 fi
 
-echo "CRITICAL - $check_message - (selenium grid: $url) | $perf_data"
+echo "CRITICAL - $check_message - (selenium grid: $selenium_url) | $perf_data"
 exit $check_status
 

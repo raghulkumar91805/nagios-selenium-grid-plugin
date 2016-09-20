@@ -24,7 +24,7 @@ Add a command to nagios, for example:
 ```
 define command {
   command_name selenium_grid_active_sessions
-  command_line /DATA/gitrepo/nagios/Server/etc/objects/check_selenium_grid.sh -u $ARG1$ -w $ARG2$ -c $ARG3$ -t $ARG4$
+  command_line /DATA/gitrepo/nagios/Server/etc/objects/check_selenium_grid.sh -u $ARG1$ -w $ARG2$ -c $ARG3$ -t $ARG4$ -e $ARG5$ -j $ARG6$
 }
 ```
 
@@ -34,7 +34,7 @@ define service{
     use                         generic-service-with-notify
     host_name                   localhost
     service_description         Check Selenium Grid Active Sessions
-    check_command               selenium_grid_active_sessions!http://nagios_server:4444/grid/console!70!95!chrome,firefox,internet_explorer
+    check_command               selenium_grid_active_sessions!http://nagios_server:4444/grid/console!70!95!chrome,firefox,internet_explorer!http://jenkins_server:8888/jenkins!jobA,jobB
     check_interval              1
     contacts                    ci_admin
 }

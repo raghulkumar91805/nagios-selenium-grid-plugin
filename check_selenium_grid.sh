@@ -5,7 +5,7 @@ warn_default=70
 warning=$warn_default
 critical_default=95
 critical=$critical_default
-browsers_to_check_default="chrome,firefox,internet explorer"
+browsers_to_check_default="chrome,firefox,internet_explorer"
 IFS=',' read -r -a browsers_to_check <<< "$browsers_to_check_default"
 jenkins_jobs=""
 check_status=0 # 0 - ok, 1 - warn, 2 - critical
@@ -19,7 +19,7 @@ function usage {
     echo "    -u  selenium grid console url"
     echo "    -w  warn in case of '100 * busy sessions / all sessions + 1' of one of the browser types is greater than the entered value (precentage). default is: $warn_default"
     echo "    -c  error in case of '100 * busy sessions / all sessions + 1' of one of the browser types is greater than the entered value (precentage). default is: $critical_default"
-    echo "    -t  browser types to check. We 'wc -l' on grep of 'browserName=browser_type' from the console to find all sessions and after that 'wc -l' on grep of 'class=busy' for the busy ones. default is: $browsers_to_check_default"
+    echo "    -t  browser types to check. We 'wc -l' on grep of 'browser_type.png' (fallback to 'browser_type</a>') from the console to find all sessions and after that 'wc -l' on grep of 'class=busy' for the busy ones. default is: $browsers_to_check_default"
     echo "    -e  jenkins url"
     echo "    -j  jenkins running jobs to monitor, we can use it to correlate high consumption in selenium grid with high activity in jenkins. the data presented is magnified by factor of 10 to have better visal correlation ability against selenium data. example for jobs list: jobA,jobB,jobC"
     echo "    -h  display help"
@@ -31,9 +31,16 @@ function usage {
 function check {
 
   local browser_type=$1
-  local all_sessions=`echo "$console_data" | grep -o "browserName=$browser_type" | wc -l`
-  local busy_sessions=`echo "$console_data" | grep "browserName=$browser_type" | grep -o class=\'busy\' | wc -l`
+  local browser_type_grep_string="$browser_type.png"
+  local all_sessions=`echo "$console_data" | grep -o "$browser_type_grep_string" | wc -l`
 
+  #fallback for browser types that do not have icon, like 'htmlunit'
+  if (( $all_sessions <= "0" )); then
+    browser_type_grep_string="$browser_type</a>"
+    all_sessions=`echo "$console_data" | grep -o "$browser_type_grep_string" | wc -l`
+  fi
+
+  local busy_sessions=`echo "$console_data" | grep "$browser_type_grep_string" | grep -o class=\'busy\' | wc -l`
   browser_type_to_print=$(echo "$browser_type" | sed -e 's/ /_/g')
 
   local busy_div_all="0"
@@ -89,8 +96,6 @@ if [ -z "$console_data" ]; then
   curl $selenium_url
   exit 2
 fi
-
-printf '%s\n' "${browsers_to_check[@]}"
 
 # Iterate the browser types to check usage
 for i in "${browsers_to_check[@]}"; do

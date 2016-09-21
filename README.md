@@ -12,7 +12,7 @@
     -u  selenium grid console url
     -w  warn in case of '100 * busy sessions / all sessions + 1' of one of the browser types is greater than the entered value (precentage). default is: 70
     -c  error in case of '100 * busy sessions / all sessions + 1' of one of the browser types is greater than the entered value (precentage). default is: 95
-    -t  browser types to check. We 'wc -l' on grep of 'browserName=browser_type' from the console to find all sessions and after that 'wc -l' on grep of 'class=busy' for the busy ones. default is: chrome,firefox,internet explorer
+    -t  browser types to check. We 'wc -l' on grep of 'browser_type.png' (fallback to 'browser_type</a>') from the console to find all sessions and after that 'wc -l' on grep of 'class=busy' for the busy ones. default is: chrome,firefox,internet_explorer
     -e  jenkins url
     -j  jenkins running jobs to monitor, we can use it to correlate high consumption in selenium grid with high activity in jenkins. the data presented is magnified by factor of 10 to have better visal correlation ability against selenium data. example for jobs list: jobA,jobB,jobC
     -h  display help

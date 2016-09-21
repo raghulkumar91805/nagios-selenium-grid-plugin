@@ -5,7 +5,7 @@ warn_default=70
 warning=$warn_default
 critical_default=95
 critical=$critical_default
-browsers_to_check_default="chrome,firefox,internet_explorer"
+browsers_to_check_default="chrome,firefox,internet explorer"
 IFS=',' read -r -a browsers_to_check <<< "$browsers_to_check_default"
 jenkins_jobs=""
 check_status=0 # 0 - ok, 1 - warn, 2 - critical
@@ -19,7 +19,7 @@ function usage {
     echo "    -u  selenium grid console url"
     echo "    -w  warn in case of '100 * busy sessions / all sessions + 1' of one of the browser types is greater than the entered value (precentage). default is: $warn_default"
     echo "    -c  error in case of '100 * busy sessions / all sessions + 1' of one of the browser types is greater than the entered value (precentage). default is: $critical_default"
-    echo "    -t  browser types to check. We 'wc -l' the <browser_type>.png in the console to find all sessions and after that 'wc -l' class=busy for the busy ones. default is: $browsers_to_check_default"
+    echo "    -t  browser types to check. We 'wc -l' on grep of 'browserName=browser_type' from the console to find all sessions and after that 'wc -l' on grep of 'class=busy' for the busy ones. default is: $browsers_to_check_default"
     echo "    -e  jenkins url"
     echo "    -j  jenkins running jobs to monitor, we can use it to correlate high consumption in selenium grid with high activity in jenkins. the data presented is magnified by factor of 10 to have better visal correlation ability against selenium data. example for jobs list: jobA,jobB,jobC"
     echo "    -h  display help"
@@ -31,21 +31,21 @@ function usage {
 function check {
 
   local browser_type=$1
-  local all_sessions=`echo "$console_data" | grep -o $browser_type.png | wc -l`
-  local busy_sessions=`echo "$console_data" | grep $browser_type.png | grep -o class=\'busy\' | wc -l`
+  local all_sessions=`echo "$console_data" | grep -o "browserName=$browser_type" | wc -l`
+  local busy_sessions=`echo "$console_data" | grep "browserName=$browser_type" | grep -o class=\'busy\' | wc -l`
 
-  if (( $all_sessions <=  "0" )); then
-    echo "ERROR: $browser_type all sessions list (busy+available) is $all_sessions - could be connectivity issues or availability problem or non supported browser type in selenium"
-    exit 2
+  browser_type_to_print=$(echo "$browser_type" | sed -e 's/ /_/g')
+
+  local busy_div_all="0"
+  if (( $all_sessions >  "0" )); then
+     busy_div_all=$((100*$busy_sessions/$all_sessions + 1))
   fi
-
-  local busy_div_all=$((100*$busy_sessions/$all_sessions + 1))
 
   # append message
   if (($busy_div_all > $critical)); then
-     check_message="$check_message ### CRITICAL: browser $browser_type, reached critical limit: $critical%, busy sessions: $busy_sessions, all sessions: $all_sessions"
+     check_message="$check_message ### CRITICAL: browser $browser_type_to_print, reached critical limit: $critical%, busy sessions: $busy_sessions, all sessions: $all_sessions"
   elif (($busy_div_all > $warning)); then
-     check_message="$check_message ### WARNING: browser $browser_type, reached warning limit: $warning%, busy sessions: $busy_sessions, all sessions: $all_sessions"
+     check_message="$check_message ### WARNING: browser $browser_type_to_print, reached warning limit: $warning%, busy sessions: $busy_sessions, all sessions: $all_sessions"
   fi
 
   #set check status
@@ -55,7 +55,7 @@ function check {
     check_status=1
   fi
 
-  perf_data="$perf_data all_$browser_type=$all_sessions busy_$browser_type=$busy_sessions"
+  perf_data="$perf_data all_$browser_type_to_print=$all_sessions busy_$browser_type_to_print=$busy_sessions"
   #echo $perf_data
 }
 
@@ -90,9 +90,11 @@ if [ -z "$console_data" ]; then
   exit 2
 fi
 
+printf '%s\n' "${browsers_to_check[@]}"
+
 # Iterate the browser types to check usage
-for i in ${browsers_to_check[@]}; do
-  check $i
+for i in "${browsers_to_check[@]}"; do
+  check "$i"
 done
 
 # fetch jenkins data

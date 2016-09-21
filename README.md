@@ -2,7 +2,7 @@
 
 * This plugin uses the grid's console UI to extract busy and all sessions per browser type
 * You can configure warn and critical levels using the `-w` and `-c` cli options, so if the busy precentage of at least one of the browser types being monitored exceed the limit it will be reflected in nagios
-* You can remove of add browser types to this plugin, notice that if your browser types are not according to the default, you must change it.
+* You can remove or add browser types to this plugin, notice that if your browser types are not according to the default, you must change it.
 * It also tracks active running jenkins builds (aggregated per job), this info can help to correlate high activity in Jenkins with high activity in selenium
 * The plugin is already configured to work with nagiosgraph, so you can see the data in a visalize way overtime
 

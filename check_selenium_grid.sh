@@ -97,12 +97,12 @@ done
 
 # fetch jenkins data
 if [ ! -z "$jenkins_url" ]; then
-  all_active_jobs=$(curl -s -g "$jenkins_url/api/xml?tree=jobs[name,url,color]&xpath=/hudson/job[ends-with(color/text(),\"_anime\")]&wrapper=jobs")
+  all_active_jobs=$(curl -s -g "$jenkins_url/computer/api/xml?tree=computer[executors[currentExecutable[url]],oneOffExecutors[currentExecutable[url]]]&xpath=//url&wrapper=builds")
 
   for i in ${jenkins_jobs[@]}; do
     # we add the "<name>" to the grep to count the job only once and not twice as it is exist in the url param as well
-    count=$((10*$(echo "$all_active_jobs" | grep -o "<name>$i" | wc -l)))
-    perf_data="$perf_data $i=$count"
+    count=$((10*$(echo "$all_active_jobs" | grep -o "$i" | wc -l)))
+    perf_data="$perf_data $i*10=$count"
   done
 
 fi
